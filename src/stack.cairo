@@ -55,14 +55,17 @@ impl StackImpl of StackTrait {
         let Stack{inner: mut inner } = self;
         let len = inner.len();
 
-        // Reconstruct the stack struct
+        // Get the last element of our stack
         let value = inner.get(len - 1_u32);
 
         // Create a new stack
         let mut tmp = StackImpl::new();
-        tmp.recursive_build(len - 1_u32, 0_u32, ref self);
+        // Recursively fill the new stack with self's content up until index == self.len() - 2
+        tmp.recursive_build(len - 2_u32, 0_u32, ref self);
 
         self = Stack { inner };
+
+        // Replace reference to self with new stack
         self = tmp;
         value
     }

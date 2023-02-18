@@ -4,7 +4,7 @@ use array::ArrayTrait;
 /// Stack representation.
 #[derive(Drop, Copy)]
 struct Stack {
-    data: Array::<u256>, 
+    inner: Array::<u256>, 
 }
 
 /// Stack trait
@@ -19,6 +19,8 @@ trait StackTrait {
     fn peek(ref self: Stack, idx: u32) -> Option::<u256>;
     /// Return the length of the stack
     fn len(ref self: Stack) -> u32;
+    // recursively construct a stack
+    fn recursive_build(ref self: Stack, len: u32, count: u32, ref target: Stack);
 }
 
 /// Stack implementation for the Stack trait.
@@ -27,8 +29,8 @@ impl StackImpl of StackTrait {
     /// # Returns
     /// A new stack
     fn new() -> Stack {
-        let data = array_new::<u256>();
-        return Stack { data: data };
+        let inner = array_new::<u256>();
+        return Stack { inner: inner };
     }
 
     /// Push a value onto the stack.
@@ -36,11 +38,11 @@ impl StackImpl of StackTrait {
     /// * `self` - The stack
     /// * `value` - The value to push
     fn push(ref self: Stack, value: u256) {
-        // Deconstruct the stack struct so we can mutate the data
-        let Stack{data: mut data } = self;
-        data.append(value);
+        // Deconstruct the stack struct so we can mutate the inner
+        let Stack{inner: mut inner } = self;
+        inner.append(value);
         // Reconstruct the stack struct
-        self = Stack { data };
+        self = Stack { inner };
     }
 
     /// Pop a value from the stack.
@@ -50,12 +52,42 @@ impl StackImpl of StackTrait {
     /// The popped value
     fn pop(ref self: Stack) -> Option::<u256> {
         // Deconstruct the stack struct because we consume it
-        let Stack{data: mut data } = self;
-        let len = data.len();
+        let Stack{inner: mut inner } = self;
+        let len = inner.len();
+
         // Reconstruct the stack struct
-        let value = data.pop_front();
-        self = Stack { data };
+        let value = inner.get(len - 1_u32);
+
+        // Create a new stack
+        let mut tmp = StackImpl::new();
+        tmp.recursive_build(len - 1_u32, 0_u32, ref self);
+
+        self = Stack { inner };
+        self = tmp;
         value
+    }
+
+    /// Recursively build from an array
+    /// # Arguments
+    /// * `self` - The stack
+    /// * `len` - The length of the recursive loop
+    /// * `array` - The u256 array to iterate over
+    fn recursive_build(ref self: Stack, len: u32, count: u32, ref target: Stack) {
+        if count == len {
+            return ();
+        }
+        let Stack{inner: mut inner } = target;
+        let value = inner.get(count);
+        match value {
+            Option::Some(val) => {
+                self.push(val);
+            },
+            Option::None(_) => {
+                return ();
+            }
+        }
+        target = Stack { inner };
+        return self.recursive_build(len, count + 1_u32, ref target);
     }
 
     /// Peek the Nth item from the stack.
@@ -66,28 +98,28 @@ impl StackImpl of StackTrait {
     /// The peeked value
     fn peek(ref self: Stack, idx: u32) -> Option::<u256> {
         // Deconstruct the stack struct because we consume it
-        let Stack{data: mut data } = self;
-        let stack_len = data.len();
+        let Stack{inner: mut inner } = self;
+        let stack_len = inner.len();
         // Index must be positive
         if idx < 0_u32 {
-            self = Stack { data };
+            self = Stack { inner };
             return Option::<u256>::None(());
         }
         // Index must be greater than the length of the stack
         if idx >= stack_len {
-            self = Stack { data };
+            self = Stack { inner };
             return Option::<u256>::None(());
         }
         // Reconstruct the stack struct because next line can panic
-        self = Stack { data };
+        self = Stack { inner };
         // Compute the actual index of the underlying array
         let actual_idx = stack_len - idx - 1_u32;
-        
-        // Deconstruct the stack struct because we consume it
-        let Stack{data: mut data } = self;
-        let value = data.get(actual_idx);
 
-        self = Stack { data };
+        // Deconstruct the stack struct because we consume it
+        let Stack{inner: mut inner } = self;
+        let value = inner.get(actual_idx);
+
+        self = Stack { inner };
         value
     }
 
@@ -96,10 +128,10 @@ impl StackImpl of StackTrait {
     /// The length of the stack
     fn len(ref self: Stack) -> u32 {
         // Deconstruct the stack struct because we consume it
-        let Stack{data: mut data } = self;
-        let len = data.len();
+        let Stack{inner: mut inner } = self;
+        let len = inner.len();
         // Reconstruct the stack struct
-        self = Stack { data };
+        self = Stack { inner };
         len
     }
 }
